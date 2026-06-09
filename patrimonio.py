@@ -1,121 +1,40 @@
 from banco import conectar
 
-def consultar_patrimonio():
-    codigo = input("\nLeia o patrimônio: ")
+def cadastrar_patrimonio(conn, dados):
+    cursor = conn.cursor()
+    
 
-    conn = conectar()
-    cursor = conn.cursor(dictionary=True)
+    codigo = dados[0]
+    codigo_secundario = dados[1]
+
+    from patrimonio import patrimonio_existe
+
+    if patrimonio_existe(conn, codigo, codigo_secundario):
+        print("❌ Patrimônio já existe (código ou secundário duplicado)")
+        cursor.close()
+        return
 
     sql = """
-    SELECT
-        p.codigo,
-        p.codigo_secundario,
-        p.tipo_patrimonio,
-        p.descricao,
-        l.nome AS local,
-        p.status
-    FROM patrimonio p
-    JOIN locais l ON p.local_id = l.id
-    WHERE p.codigo = %s
+    INSERT INTO patrimonio (
+        codigo,
+        codigo_secundario,
+        tipo_patrimonio,
+        descricao,
+        marca,
+        modelo,
+        status,
+        local_id,
+        observacoes
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
 
-    cursor.execute(sql, (codigo,))
-    resultado = cursor.fetchone()
-
-    if resultado:
-        print("\nPatrimônio encontrado")
-        print("---------------------")
-        print("Código:", resultado["codigo"])
-        print("Código Secundário:", resultado["codigo_secundario"])
-        print("Tipo:", resultado["tipo_patrimonio"])
-        print("Descrição:", resultado["descricao"])
-        print("Local:", resultado["local"])
-        print("Status:", resultado["status"])
-    else:
-        print("\nPatrimônio não encontrado.")
-        print("Vamos cadastrá-lo.\n")
-
-        print("Tipo de patrimônio:")
-        print("1 - UERGS")
-        print("2 - Estado RS")
-        print("3 - UERGS + Estado RS")
-        print("4 - Doação")
-        print("5 - Outro")
-
-        tipo_opcao = input("\nEscolha: ")
-
-        tipo_map = {
-            "1": "UERGS",
-            "2": "Estado RS",
-            "3": "UERGS + Estado RS",
-            "4": "Doação",
-            "5": "Outro"
-        }
-
-        tipo_patrimonio = tipo_map.get(tipo_opcao, "UERGS")
-
-        codigo_secundario = input("\nCódigo secundário (ENTER se não existir): ")
-        descricao = input("Descrição do equipamento: ")
-
-        print("\nLocais disponíveis:")
-        cursor.execute("SELECT id, nome FROM locais ORDER BY nome")
-        locais = cursor.fetchall()
-
-        for local in locais:
-            print(f"{local['id']} - {local['nome']}")
-
-        local_id = int(input("\nDigite o ID do local: "))
-
-        print("\nStatus:")
-        print("1 - Em uso")
-        print("2 - Disponível")
-        print("3 - Em manutenção")
-        print("4 - Defeito")
-        print("5 - Descarte")
-
-        opcao = input("Escolha: ")
-
-        status_map = {
-            "1": "Em uso",
-            "2": "Disponível",
-            "3": "Em manutenção",
-            "4": "Defeito",
-            "5": "Descarte"
-        }
-
-        status = status_map.get(opcao, "Em uso")
-
-        sql_insert = """
-        INSERT INTO patrimonio
-        (
-            codigo,
-            codigo_secundario,
-            tipo_patrimonio,
-            descricao,
-            local_id,
-            status
-        )
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """
-
-        cursor.execute(
-            sql_insert,
-            (
-                codigo,
-                codigo_secundario,
-                tipo_patrimonio,
-                descricao,
-                local_id,
-                status
-            )
-        )
-
-        conn.commit()
-        print("\nPatrimônio cadastrado com sucesso!")
-
+    cursor.execute(sql, dados)
+    conn.commit()
     cursor.close()
-    conn.close()
 
+    print("✔ Patrimônio cadastrado com sucesso!")
+    
 def listar_patrimonios(conn):
     cursor = conn.cursor(dictionary=True)
 
@@ -148,6 +67,63 @@ def listar_patrimonios(conn):
 
     cursor.close()
 
+def patrimonio_existe(conn, codigo, codigo_secundario=None):
+    cursor = conn.cursor()
+
+    if codigo_secundario:
+        sql = """
+        SELECT COUNT(*)
+        FROM patrimonio
+        WHERE codigo = %s OR codigo_secundario = %s
+        """
+        cursor.execute(sql, (codigo, codigo_secundario))
+    else:
+        sql = """
+        SELECT COUNT(*)
+        FROM patrimonio
+        WHERE codigo = %s
+        """
+        cursor.execute(sql, (codigo,))
+
+    existe = cursor.fetchone()[0]
+
+    cursor.close()
+
+    return existe > 0
+
+def salvar():
+    dados = tuple(entry.get() for entry in entradas.values())
+
+    if patrimonio_existe(conn, dados[0], dados[1]):
+        print("❌ Já existe patrimônio com esse código")
+        return
+
+    cadastrar_patrimonio(conn, dados)
+
+    print("✔ Cadastrado com sucesso!")
+    janela.destroy()
+
+def buscar_por_codigo(conn, codigo):
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT
+            p.codigo,
+            p.codigo_secundario,
+            p.descricao,
+            p.marca,
+            p.modelo,
+            p.status,
+            l.nome AS local
+        FROM patrimonio p
+        LEFT JOIN locais l ON p.local_id = l.id
+        WHERE p.codigo = %s
+    """, (codigo,))
+
+    resultado = cursor.fetchone()
+    cursor.close()
+
+    return resultado
 
 def alterar_status():
     codigo = input("\nCódigo do patrimônio: ")
