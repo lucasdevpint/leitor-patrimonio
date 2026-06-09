@@ -2,6 +2,7 @@ from banco import conectar
 from inventario import iniciar_inventario
 from exportar_para_excel import exportar_para_excel
 from busca import buscar_patrimonio
+from dashboard import dashboard_patrimonio
 
 from patrimonio import (
     consultar_patrimonio,
@@ -29,6 +30,7 @@ while True:
     print("6 - Inventário")
     print("7 - Exportar Planilha")
     print("8 - Busca Avanaçada")
+    print("9 - Dashboard de estatísticas")
     print("0 - Sair")
 
     opcao = input("\nEscolha: ")
@@ -57,6 +59,8 @@ while True:
     elif opcao == "8":
         termo = input("Pesquisar patrimônio: ")
         buscar_patrimonio(conn, termo)
+    elif opcao == "9":
+        dashboard_patrimonio(conn)
 
     elif opcao == "0":
         print("\nEncerrando...")
