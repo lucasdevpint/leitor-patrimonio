@@ -116,9 +116,7 @@ def consultar_patrimonio():
     cursor.close()
     conn.close()
 
-
-def listar_patrimonios():
-    conn = conectar()
+def listar_patrimonios(conn):
     cursor = conn.cursor(dictionary=True)
 
     sql = """
@@ -130,7 +128,7 @@ def listar_patrimonios():
         l.nome AS local,
         p.status
     FROM patrimonio p
-    JOIN locais l ON p.local_id = l.id
+    LEFT JOIN locais l ON p.local_id = l.id
     ORDER BY p.codigo
     """
 
@@ -149,7 +147,6 @@ def listar_patrimonios():
         )
 
     cursor.close()
-    conn.close()
 
 
 def alterar_status():
