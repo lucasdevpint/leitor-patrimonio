@@ -125,6 +125,38 @@ def buscar_por_codigo(conn, codigo):
 
     return resultado
 
+def editar_patrimonio(conn, codigo, dados):
+
+    cursor = conn.cursor()
+
+    sql = """
+    UPDATE patrimonio
+    SET
+        descricao = %s,
+        marca = %s,
+        modelo = %s,
+        tipo_patrimonio = %s,
+        status = %s
+    WHERE codigo = %s
+    """
+
+    cursor.execute(
+        sql,
+        (
+            dados["descricao"],
+            dados["marca"],
+            dados["modelo"],
+            dados["tipo_patrimonio"],
+            dados["status"],
+            codigo
+        )
+    )
+
+    conn.commit()
+    cursor.close()
+
+    print("✔ Patrimônio atualizado com sucesso!")
+
 def alterar_status():
     codigo = input("\nCódigo do patrimônio: ")
 
