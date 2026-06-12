@@ -3,7 +3,7 @@ import customtkinter as ctk
 from patrimonio import editar_patrimonio
 
 
-def abrir_edicao(app, conn, dados):
+def abrir_edicao(app, conn, tabela, dados):
 
     janela = ctk.CTkToplevel(app)
     janela.title("Editar Patrimônio")
@@ -71,6 +71,10 @@ def abrir_edicao(app, conn, dados):
             dados["codigo"],
             novos_dados
         )
+        
+        from telas.tabela import carregar_tabela
+
+        carregar_tabela(conn, tabela)
 
         print("✔ Patrimônio atualizado!")
 

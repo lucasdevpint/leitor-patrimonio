@@ -87,4 +87,4 @@ def ao_clicar_tabela(event, app, conn, tabela):
 
     dados = cursor.fetchone()
 
-    abrir_detalhes(app, conn, dados)
+    abrir_detalhes(app, conn, tabela, dados)

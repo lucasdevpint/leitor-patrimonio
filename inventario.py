@@ -1,7 +1,7 @@
 from banco import conectar
 
 def iniciar_inventario():
-
+    pass
     conn = conectar()
     cursor = conn.cursor(dictionary=True)
 

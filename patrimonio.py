@@ -158,6 +158,7 @@ def editar_patrimonio(conn, codigo, dados):
     print("✔ Patrimônio atualizado com sucesso!")
 
 def alterar_status():
+    pass
     codigo = input("\nCódigo do patrimônio: ")
 
     conn = conectar()
