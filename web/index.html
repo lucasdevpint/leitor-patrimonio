@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="theme-color" content="#1A1A2E"/>
+  <title>Sistema Patrimonial</title>
+  <style>
+    :root {
+      --bg:       #1A1A2E;
+      --card:     #0F3460;
+      --sidebar:  #16213E;
+      --accent:   #3B8BEB;
+      --success:  #4CAF7D;
+      --danger:   #E05252;
+      --warn:     #F0A500;
+      --muted:    #8892A4;
+      --text:     #FFFFFF;
+      --radius:   12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; }
+
+    /* ── Login ── */
+    #tela-login { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .login-box { background: var(--card); border-radius: var(--radius); padding: 32px 28px; width: 100%; max-width: 380px; }
+    .login-logo { text-align: center; font-size: 48px; margin-bottom: 6px; }
+    .login-titulo { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 4px; }
+    .login-sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    .login-erro { color: var(--danger); font-size: 12px; text-align: center; margin-bottom: 8px; min-height: 18px; }
+
+    /* ── Inputs ── */
+    input, select, textarea {
+      width: 100%; padding: 12px 14px; border-radius: 8px;
+      border: 1px solid #2a3a5c; background: #1a2a4a;
+      color: var(--text); font-size: 15px; margin-bottom: 12px; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+
+    /* ── Botões ── */
+    .btn { width: 100%; padding: 13px; border-radius: 8px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+    .btn:active { opacity: .8; }
+    .btn-accent  { background: var(--accent);  color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger  { background: var(--danger);  color: #fff; }
+    .btn-ghost   { background: transparent; border: 1px solid #2a3a5c; color: var(--text); }
+    .btn-sm      { padding: 8px 14px; font-size: 13px; width: auto; border-radius: 6px; }
+
+    /* ── App shell ── */
+    #app { display: none; flex-direction: column; min-height: 100vh; }
+
+    /* ── Topbar ── */
+    .topbar { background: var(--sidebar); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .topbar-titulo { font-size: 17px; font-weight: bold; }
+    .topbar-usuario { font-size: 12px; color: var(--muted); }
+    .topbar-sair { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+
+    /* ── Conteúdo ── */
+    .conteudo { flex: 1; padding: 16px; padding-bottom: 80px; }
+
+    /* ── Bottom nav ── */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--sidebar); display: flex; border-top: 1px solid #2a3a5c; z-index: 100; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 4px; cursor: pointer; color: var(--muted); font-size: 11px; gap: 3px; border: none; background: none; transition: color .2s; }
+    .nav-item.ativo { color: var(--accent); }
+    .nav-icon { font-size: 22px; }
+
+    /* ── Cards ── */
+    .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+    .card-titulo { font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+
+    /* ── Dashboard cards ── */
+    .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .dash-card { background: var(--card); border-radius: var(--radius); padding: 16px 12px; text-align: center; }
+    .dash-valor { font-size: 28px; font-weight: bold; }
+    .dash-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* ── Lista ── */
+    .lista-item { background: var(--card); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; cursor: pointer; transition: opacity .15s; }
+    .lista-item:active { opacity: .75; }
+    .lista-codigo { font-size: 13px; font-weight: bold; color: var(--accent); }
+    .lista-desc { font-size: 15px; font-weight: 600; margin: 2px 0; }
+    .lista-meta { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+
+    /* ── Detalhe ── */
+    .detalhe-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; }
+    .detalhe-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg); border-radius: 20px 20px 0 0; max-height: 90vh; overflow-y: auto; padding: 20px 16px 40px; z-index: 201; transform: translateY(100%); transition: transform .3s ease; }
+    .detalhe-sheet.aberto { transform: translateY(0); }
+    .detalhe-handle { width: 40px; height: 4px; background: #2a3a5c; border-radius: 2px; margin: 0 auto 20px; }
+    .detalhe-campo { display: flex; flex-direction: column; margin-bottom: 14px; }
+    .detalhe-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .detalhe-valor { font-size: 15px; }
+
+    /* ── Busca ── */
+    .busca-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+    .busca-bar input { margin: 0; flex: 1; }
+
+    /* ── Seção ── */
+    .secao-titulo { font-size: 18px; font-weight: bold; margin-bottom: 14px; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: var(--success); color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 999; opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap; }
+    .toast.erro { background: var(--danger); }
+    .toast.visivel { opacity: 1; }
+
+    /* ── Loading ── */
+    .loading { text-align: center; color: var(--muted); padding: 40px; font-size: 14px; }
+
+    /* ── Form ── */
+    .form-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block; }
+    .form-group { margin-bottom: 14px; }
+    .form-grupo-titulo { font-size: 14px; font-weight: bold; color: var(--accent); margin: 16px 0 10px; }
+
+    /* ── Manut badge ── */
+    .badge-warn { background: rgba(240,165,0,.2); color: var(--warn); }
+    .badge-danger { background: rgba(224,82,82,.2); color: var(--danger); }
+    .badge-success { background: rgba(76,175,125,.2); color: var(--success); }
+    .badge-accent { background: rgba(59,139,235,.2); color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<!-- ════ TELA DE LOGIN ════ -->
+<div id="tela-login">
+  <div class="login-box">
+    <div class="login-logo">📦</div>
+    <div class="login-titulo">Sistema Patrimonial</div>
+    <div class="login-sub">Faça login para continuar</div>
+    <div class="login-erro" id="login-erro"></div>
+    <input type="text"     id="inp-login" placeholder="Login" autocomplete="username"/>
+    <input type="password" id="inp-senha" placeholder="Senha" autocomplete="current-password"/>
+    <button class="btn btn-accent" onclick="fazerLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- ════ APP ════ -->
+<div id="app">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div>
+      <div class="topbar-titulo" id="topbar-titulo">📦 Patrimônio</div>
+      <div class="topbar-usuario" id="topbar-usuario"></div>
+    </div>
+    <button class="topbar-sair" onclick="sair()" title="Sair">⬅</button>
+  </div>
+
+  <!-- Conteúdo -->
+  <div class="conteudo" id="conteudo"></div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-item" id="nav-dashboard" onclick="navegar('dashboard')">
+      <span class="nav-icon">📊</span>Dashboard
+    </button>
+    <button class="nav-item" id="nav-lista" onclick="navegar('lista')">
+      <span class="nav-icon">🗂</span>Listagem
+    </button>
+    <button class="nav-item" id="nav-busca" onclick="navegar('busca')">
+      <span class="nav-icon">🔍</span>Busca
+    </button>
+    <button class="nav-item" id="nav-cadastrar" onclick="navegar('cadastrar')">
+      <span class="nav-icon">➕</span>Cadastrar
+    </button>
+    <button class="nav-item" id="nav-manutencao" onclick="navegar('manutencao')">
+      <span class="nav-icon">🔧</span>Manutenção
+    </button>
+  </nav>
+</div>
+
+<!-- ════ DETALHE (bottom sheet) ════ -->
+<div class="detalhe-overlay" id="overlay" onclick="fecharDetalhe()"></div>
+<div class="detalhe-sheet" id="detalhe-sheet">
+  <div class="detalhe-handle"></div>
+  <div id="detalhe-conteudo"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────
+const API = window.location.origin;  // mesma origem da página
+let TOKEN   = localStorage.getItem("pat_token") || "";
+let USUARIO = JSON.parse(localStorage.getItem("pat_usuario") || "null");
+let _paginaAtual = "";
+
+// ── API Helper ───────────────────────────────────────────
+async function api(method, path, body = null) {
+  const opts = {
+    method,
+    headers: { "Content-Type": "application/json" }
+  };
+  if (TOKEN) opts.headers["Authorization"] = `Bearer ${TOKEN}`;
+  if (body)  opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  if (res.status === 401) { sair(); return null; }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Erro desconhecido" }));
+    throw new Error(err.detail || "Erro na requisição");
+  }
+  return res.json();
+}
+
+async function apiForm(path, formData) {
+  const res = await fetch(API + path, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${TOKEN}` },
+    body: formData
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Erro" }));
+    throw new Error(err.detail);
+  }
+  return res.json();
+}
+
+// ── Toast ────────────────────────────────────────────────
+function toast(msg, tipo = "ok") {
+  const el = document.getElementById("toast");
+  el.textContent  = msg;
+  el.className    = "toast" + (tipo === "erro" ? " erro" : "") + " visivel";
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove("visivel"), 3000);
+}
+
+// ── Login ────────────────────────────────────────────────
+async function fazerLogin() {
+  const login = document.getElementById("inp-login").value.trim();
+  const senha = document.getElementById("inp-senha").value;
+  document.getElementById("login-erro").textContent = "";
+  try {
+    const form = new URLSearchParams();
+    form.append("username", login);
+    form.append("password", senha);
+    const res = await fetch(API + "/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      document.getElementById("login-erro").textContent = err.detail;
+      return;
+    }
+    const data = await res.json();
+    TOKEN   = data.access_token;
+    USUARIO = data.usuario;
+    localStorage.setItem("pat_token",   TOKEN);
+    localStorage.setItem("pat_usuario", JSON.stringify(USUARIO));
+    iniciarApp();
+  } catch (e) {
+    document.getElementById("login-erro").textContent = "Erro ao conectar com o servidor.";
+  }
+}
+
+document.getElementById("inp-senha").addEventListener("keydown", e => {
+  if (e.key === "Enter") fazerLogin();
+});
+
+function sair() {
+  TOKEN = ""; USUARIO = null;
+  localStorage.removeItem("pat_token");
+  localStorage.removeItem("pat_usuario");
+  document.getElementById("app").style.display = "none";
+  document.getElementById("tela-login").style.display = "flex";
+}
+
+function iniciarApp() {
+  document.getElementById("tela-login").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+  document.getElementById("topbar-usuario").textContent =
+    `${USUARIO.nome} · ${USUARIO.nivel}`;
+  navegar("dashboard");
+}
+
+// ── Navegação ─────────────────────────────────────────────
+function navegar(pagina) {
+  _paginaAtual = pagina;
+  document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("ativo"));
+  const btn = document.getElementById("nav-" + pagina);
+  if (btn) btn.classList.add("ativo");
+
+  const titulos = {
+    dashboard:  "📊 Dashboard",
+    lista:      "🗂 Listagem",
+    busca:      "🔍 Busca",
+    cadastrar:  "➕ Cadastrar",
+    manutencao: "🔧 Manutenção",
+  };
+  document.getElementById("topbar-titulo").textContent = titulos[pagina] || "Patrimônio";
+
+  const paginas = { dashboard, lista, busca, cadastrar, manutencao };
+  if (paginas[pagina]) paginas[pagina]();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────
+async function dashboard() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = '<div class="loading">Carregando...</div>';
+  try {
+    const s = await api("GET", "/dashboard");
+    const coresStatus = {
+      "Em uso": "#3B8BEB", "Disponível": "#4CAF7D",
+      "Em manutenção": "#F0A500", "Defeito": "#E05252", "Descarte": "#888"
+    };
+    let html = `
+      <div class="secao-titulo">Visão Geral</div>
+      <div class="dash-grid">
+        <div class="dash-card">
+          <div class="dash-valor" style="color:#fff">${s.total}</div>
+          <div class="dash-label">Total de Itens</div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-valor" style="color:#4CAF7D;font-size:18px">
+            R$ ${Number(s.total_valor).toLocaleString("pt-BR",{minimumFractionDigits:2})}
+          </div>
+          <div class="dash-label">Valor Total</div>
+        </div>
+        <div class="dash-card" onclick="navegar('manutencao')">
+          <div class="dash-valor" style="color:#F0A500">${s.manutencoes_proximas}</div>
+          <div class="dash-label">Manut. Próximas</div>
+        </div>
+        <div class="dash-card" onclick="navegar('manutencao')">
+          <div class="dash-valor" style="color:#E05252">${s.manutencoes_atrasadas}</div>
+          <div class="dash-label">Manut. Atrasadas</div>
+        </div>
+      </div>
+      <div class="card-titulo" style="margin-bottom:10px">Por Status</div>
+    `;
+    for (const [status, qtd] of Object.entries(s.por_status)) {
+      const pct = s.total ? Math.round(qtd / s.total * 100) : 0;
+      const cor = coresStatus[status] || "#888";
+      html += `
+        <div class="card" style="padding:12px 14px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:13px">${status}</span>
+            <span style="font-weight:bold;color:${cor}">${qtd}</span>
+          </div>
+          <div style="background:#1a2a4a;border-radius:4px;height:6px">
+            <div style="background:${cor};width:${pct}%;height:6px;border-radius:4px"></div>
+          </div>
+        </div>`;
+    }
+    if (s.por_local?.length) {
+      html += `<div class="card-titulo" style="margin:16px 0 10px">Top Locais</div>`;
+      for (const l of s.por_local) {
+        html += `
+          <div class="card" style="padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between">
+            <span style="font-size:13px">${l.local}</span>
+            <span style="font-weight:bold;color:var(--accent)">${l.quantidade}</span>
+          </div>`;
+      }
+    }
+    c.innerHTML = html;
+  } catch(e) { c.innerHTML = `<div class="loading">Erro: ${e.message}</div>`; }
+}
+
+// ── LISTAGEM ──────────────────────────────────────────────
+async function lista() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = '<div class="loading">Carregando...</div>';
+  try {
+    const dados = await api("GET", "/patrimonios/");
+    renderLista(c, dados);
+  } catch(e) { c.innerHTML = `<div class="loading">Erro: ${e.message}</div>`; }
+}
+
+function corStatus(s) {
+  return { "Em uso":"#3B8BEB","Disponível":"#4CAF7D","Em manutenção":"#F0A500",
+           "Defeito":"#E05252","Descarte":"#888" }[s] || "#888";
+}
+
+function renderLista(container, dados) {
+  if (!dados.length) {
+    container.innerHTML = '<div class="loading">Nenhum patrimônio encontrado.</div>';
+    return;
+  }
+  container.innerHTML = dados.map((r, i) => `
+    <div class="lista-item" onclick="abrirDetalhe(${i})" data-idx="${i}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="lista-codigo">${r.codigo}</span>
+        <span class="badge" style="background:${corStatus(r.status)}22;color:${corStatus(r.status)}">${r.status}</span>
+      </div>
+      <div class="lista-desc">${r.descricao || "—"}</div>
+      <div class="lista-meta">
+        <span>📍 ${r.local || "—"}</span>
+        <span>🏷 ${r.tipo_patrimonio || "—"}</span>
+        ${r.responsavel ? `<span>👤 ${r.responsavel}</span>` : ""}
+      </div>
+    </div>
+  `).join("");
+  // Guarda os dados para uso no detalhe
+  window._listaDados = dados;
+}
+
+function abrirDetalhe(idx) {
+  const r = window._listaDados?.[idx];
+  if (!r) return;
+  abrirDetalhePat(r);
+}
+
+// ── DETALHE (bottom sheet) ────────────────────────────────
+function abrirDetalhePat(r) {
+  const podeEditar = USUARIO?.nivel === "admin" || USUARIO?.nivel === "editor";
+  const campos = [
+    ["Código",          r.codigo],
+    ["Cód. Secundário", r.codigo_secundario],
+    ["Tipo",            r.tipo_patrimonio],
+    ["Marca",           r.marca],
+    ["Modelo",          r.modelo],
+    ["Nº Série",        r.numero_serie],
+    ["Responsável",     r.responsavel],
+    ["Local",           r.local],
+    ["Data Aquisição",  r.data_aquisicao],
+    ["Valor",           r.valor ? `R$ ${Number(r.valor).toLocaleString("pt-BR",{minimumFractionDigits:2})}` : null],
+    ["Observações",     r.observacoes],
+  ];
+
+  const html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:18px;font-weight:bold">${r.descricao || r.codigo}</div>
+        <div style="font-size:13px;color:var(--muted)">${r.codigo}</div>
+      </div>
+      <span class="badge" style="background:${corStatus(r.status)}22;color:${corStatus(r.status)};font-size:13px">${r.status}</span>
+    </div>
+    ${campos.filter(([,v]) => v).map(([l,v]) => `
+      <div class="detalhe-campo">
+        <span class="detalhe-label">${l}</span>
+        <span class="detalhe-valor">${v}</span>
+      </div>
+    `).join("")}
+    ${podeEditar ? `
+      <div style="margin-top:20px;display:flex;gap:10px">
+        <button class="btn btn-accent btn-sm" onclick="abrirEdicao(${JSON.stringify(r).replace(/"/g,'&quot;')})">✏️ Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="fecharDetalhe()">Fechar</button>
+      </div>
+    ` : `<button class="btn btn-ghost" style="margin-top:16px" onclick="fecharDetalhe()">Fechar</button>`}
+  `;
+  document.getElementById("detalhe-conteudo").innerHTML = html;
+  document.getElementById("overlay").style.display = "block";
+  setTimeout(() => document.getElementById("detalhe-sheet").classList.add("aberto"), 10);
+}
+
+function fecharDetalhe() {
+  document.getElementById("detalhe-sheet").classList.remove("aberto");
+  setTimeout(() => document.getElementById("overlay").style.display = "none", 300);
+}
+
+// ── EDIÇÃO ────────────────────────────────────────────────
+function abrirEdicao(r) {
+  if (typeof r === "string") r = JSON.parse(r);
+  document.getElementById("detalhe-conteudo").innerHTML = `
+    <div style="font-size:17px;font-weight:bold;margin-bottom:16px">✏️ Editar ${r.codigo}</div>
+    <div class="form-group"><label class="form-label">Descrição</label>
+      <input id="ed-descricao" value="${r.descricao||""}"/></div>
+    <div class="form-group"><label class="form-label">Tipo</label>
+      <input id="ed-tipo" value="${r.tipo_patrimonio||""}"/></div>
+    <div class="form-group"><label class="form-label">Marca</label>
+      <input id="ed-marca" value="${r.marca||""}"/></div>
+    <div class="form-group"><label class="form-label">Modelo</label>
+      <input id="ed-modelo" value="${r.modelo||""}"/></div>
+    <div class="form-group"><label class="form-label">Nº Série</label>
+      <input id="ed-serie" value="${r.numero_serie||""}"/></div>
+    <div class="form-group"><label class="form-label">Responsável</label>
+      <input id="ed-resp" value="${r.responsavel||""}"/></div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select id="ed-status">
+        ${["Em uso","Disponível","Em manutenção","Defeito","Descarte"]
+          .map(s => `<option ${s===r.status?"selected":""}>${s}</option>`).join("")}
+      </select></div>
+    <div class="form-group"><label class="form-label">Observações</label>
+      <input id="ed-obs" value="${r.observacoes||""}"/></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-success" onclick="salvarEdicao('${r.codigo}')">💾 Salvar</button>
+      <button class="btn btn-ghost" onclick="fecharDetalhe()">Cancelar</button>
+    </div>
+  `;
+}
+
+async function salvarEdicao(codigo) {
+  try {
+    await api("PUT", `/patrimonios/${codigo}`, {
+      descricao:       document.getElementById("ed-descricao").value,
+      tipo_patrimonio: document.getElementById("ed-tipo").value,
+      marca:           document.getElementById("ed-marca").value,
+      modelo:          document.getElementById("ed-modelo").value,
+      numero_serie:    document.getElementById("ed-serie").value,
+      responsavel:     document.getElementById("ed-resp").value,
+      status:          document.getElementById("ed-status").value,
+      observacoes:     document.getElementById("ed-obs").value,
+    });
+    toast("Patrimônio atualizado!");
+    fecharDetalhe();
+    if (_paginaAtual === "lista") lista();
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+// ── BUSCA ─────────────────────────────────────────────────
+function busca() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = `
+    <div class="busca-bar">
+      <input id="inp-busca" placeholder="Código, descrição, marca..." type="search"/>
+      <button class="btn btn-accent btn-sm" onclick="executarBusca()">Buscar</button>
+    </div>
+    <div id="res-busca"></div>
+  `;
+  document.getElementById("inp-busca").addEventListener("keydown", e => {
+    if (e.key === "Enter") executarBusca();
+  });
+}
+
+async function executarBusca() {
+  const termo = document.getElementById("inp-busca").value.trim();
+  if (!termo) return;
+  const res = document.getElementById("res-busca");
+  res.innerHTML = '<div class="loading">Buscando...</div>';
+  try {
+    const dados = await api("GET", `/patrimonios/buscar/${encodeURIComponent(termo)}`);
+    window._listaDados = dados;
+    renderLista(res, dados);
+  } catch(e) { res.innerHTML = `<div class="loading">Erro: ${e.message}</div>`; }
+}
+
+// ── CADASTRAR ─────────────────────────────────────────────
+async function cadastrar() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = '<div class="loading">Carregando...</div>';
+  let locais = [];
+  try { locais = await api("GET", "/patrimonios/locais"); } catch(_) {}
+
+  c.innerHTML = `
+    <div class="form-grupo-titulo">Identificação</div>
+    <div class="form-group"><label class="form-label">Código *</label>
+      <input id="f-codigo" placeholder="PAT-0001"/></div>
+    <div class="form-group"><label class="form-label">Código Secundário</label>
+      <input id="f-codsec"/></div>
+    <div class="form-group"><label class="form-label">Tipo</label>
+      <input id="f-tipo" placeholder="Notebook, Mesa..."/></div>
+    <div class="form-group"><label class="form-label">Descrição</label>
+      <input id="f-desc"/></div>
+    <div class="form-group"><label class="form-label">Nº Série</label>
+      <input id="f-serie"/></div>
+
+    <div class="form-grupo-titulo">Produto</div>
+    <div class="form-group"><label class="form-label">Marca</label>
+      <input id="f-marca"/></div>
+    <div class="form-group"><label class="form-label">Modelo</label>
+      <input id="f-modelo"/></div>
+
+    <div class="form-grupo-titulo">Controle</div>
+    <div class="form-group"><label class="form-label">Responsável</label>
+      <input id="f-resp"/></div>
+    <div class="form-group"><label class="form-label">Data Aquisição</label>
+      <input id="f-data" type="date"/></div>
+    <div class="form-group"><label class="form-label">Valor (R$)</label>
+      <input id="f-valor" type="number" step="0.01" placeholder="0.00"/></div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select id="f-status">
+        ${["Disponível","Em uso","Em manutenção","Defeito","Descarte"]
+          .map(s => `<option>${s}</option>`).join("")}
+      </select></div>
+    <div class="form-group"><label class="form-label">Local</label>
+      <select id="f-local">
+        <option value="">— Selecione —</option>
+        ${locais.map(l => `<option value="${l.id}">${l.nome}</option>`).join("")}
+      </select></div>
+    <div class="form-group"><label class="form-label">Observações</label>
+      <input id="f-obs"/></div>
+
+    <button class="btn btn-accent" onclick="salvarCadastro()" style="margin-top:8px">
+      💾 Salvar Patrimônio
+    </button>
+  `;
+}
+
+async function salvarCadastro() {
+  const codigo = document.getElementById("f-codigo").value.trim();
+  if (!codigo) { toast("O código é obrigatório.", "erro"); return; }
+  try {
+    await api("POST", "/patrimonios/", {
+      codigo,
+      codigo_secundario: document.getElementById("f-codsec").value || null,
+      tipo_patrimonio:   document.getElementById("f-tipo").value  || null,
+      descricao:         document.getElementById("f-desc").value  || null,
+      numero_serie:      document.getElementById("f-serie").value || null,
+      marca:             document.getElementById("f-marca").value || null,
+      modelo:            document.getElementById("f-modelo").value|| null,
+      responsavel:       document.getElementById("f-resp").value  || null,
+      data_aquisicao:    document.getElementById("f-data").value  || null,
+      valor:             parseFloat(document.getElementById("f-valor").value) || null,
+      status:            document.getElementById("f-status").value,
+      local_id:          parseInt(document.getElementById("f-local").value) || null,
+      observacoes:       document.getElementById("f-obs").value   || null,
+    });
+    toast("Patrimônio cadastrado com sucesso!");
+    cadastrar(); // limpa o form
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+// ── MANUTENÇÃO ────────────────────────────────────────────
+async function manutencao() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = '<div class="loading">Carregando...</div>';
+  try {
+    const dados = await api("GET", "/manutencoes/pendentes");
+    if (!dados.length) {
+      c.innerHTML = `
+        <div class="secao-titulo">🔧 Manutenção</div>
+        <div class="card" style="text-align:center;color:var(--muted);padding:30px">
+          ✅ Nenhuma manutenção pendente!
+        </div>`;
+      return;
+    }
+    let html = `<div class="secao-titulo">Manutenções Pendentes</div>`;
+    for (const m of dados) {
+      const dias = m.dias_restantes;
+      const cor  = dias < 0 ? "danger" : dias <= 3 ? "warn" : "success";
+      const msg  = dias < 0 ? `${Math.abs(dias)}d atrasada` : dias === 0 ? "Hoje!" : `${dias}d`;
+      html += `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:bold">${m.codigo}</span>
+            <span class="badge badge-${cor}">${msg}</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted);margin:4px 0">${m.patrimonio}</div>
+          <div style="font-size:13px">${m.tipo} · ${m.data_prevista}</div>
+          ${m.responsavel ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">👤 ${m.responsavel}</div>` : ""}
+          ${m.local ? `<div style="font-size:12px;color:var(--muted)">📍 ${m.local}</div>` : ""}
+        </div>`;
+    }
+    c.innerHTML = html;
+  } catch(e) { c.innerHTML = `<div class="loading">Erro: ${e.message}</div>`; }
+}
+
+// ── Init ──────────────────────────────────────────────────
+if (TOKEN && USUARIO) {
+  iniciarApp();
+}
+</script>
+</body>
+</html>
