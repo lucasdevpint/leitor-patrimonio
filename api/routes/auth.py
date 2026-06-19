@@ -2,7 +2,7 @@
 import hashlib
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from api.deps import get_conn, criar_token
+from api.deps import get_conn, criar_token, get_usuario_atual
 from core import auditoria
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -46,6 +46,5 @@ def login(
 
 
 @router.get("/me")
-def me(conn=Depends(get_conn),
-       usuario=Depends(__import__("api.deps", fromlist=["get_usuario_atual"]).get_usuario_atual)):
+def me(usuario=Depends(get_usuario_atual)):
     return usuario

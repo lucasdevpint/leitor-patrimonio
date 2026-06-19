@@ -52,10 +52,54 @@ UPDATE usuarios SET senha_hash = SHA2('nova_senha', 256) WHERE login = 'admin';
 | editor         | ✅ | ✅ | ❌ |
 | admin          | ✅ | ✅ | ✅ |
 
-## Estrutura
+## Atualização v3.1 — Usuários e Visitantes
 
+Esta versão adiciona gerenciamento completo de usuários (admin) e
+cadastro de visitantes, seguindo o fluxo seguro de migração:
+
+### Fluxo de atualização (siga esta ordem)
+
+```bash
+# 1. Backup do banco ANTES de qualquer alteração
+mysqldump -u root -p patrimonio > backup_antes_v31.sql
+
+# 2. Aplicar a migração SQL
+mysql -u root -p patrimonio < db/migracao_usuarios_visitantes.sql
+
+# 3. Testar localmente
+python gui/main.py
+# ou
+uvicorn api.app:app --reload
+
+# 4. Se tudo OK, copiar os arquivos atualizados para o servidor
+#    (core/, api/, web/, db/)
+
+# 5. No servidor, reiniciar a API
+sudo systemctl restart patrimonio-api
 ```
-patrimonio-v3/
+
+### Novidades
+
+- **Tela de Usuários** (admin) — cadastrar, editar, redefinir senha, desativar
+- **Tela de Visitantes** (admin) — cadastrar, editar, buscar, desativar
+- **Alterar Minha Senha** — disponível para qualquer usuário autenticado, no menu "⋯ Mais"
+- Regras de segurança: admin não pode remover o próprio nível admin nem desativar a própria conta
+- Toda ação fica registrada na auditoria: criação/edição de usuário, troca de senha, criação/edição de visitante
+
+### Endpoints novos da API
+
+| Método | Rota | Quem pode |
+|---|---|---|
+| GET | `/usuarios/` | admin |
+| POST | `/usuarios/` | admin |
+| PUT | `/usuarios/{id}` | admin |
+| PATCH | `/usuarios/{id}/senha` | admin |
+| PATCH | `/usuarios/{id}/desativar` | admin |
+| PATCH | `/usuarios/{id}/reativar` | admin |
+| PATCH | `/usuarios/me/senha` | qualquer autenticado |
+| GET/POST/PUT | `/visitantes/...` | admin |
+| GET | `/relatorios/excel` | editor+ |
+
 ├── core/
 │   ├── auth.py          # Login e controle de usuários
 │   ├── auditoria.py     # Log de ações

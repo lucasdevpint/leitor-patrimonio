@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from api.config import CORS_ORIGINS
-from api.routes import auth, patrimonios, outros
+from api.routes import auth, patrimonios, outros, usuarios, visitantes
 
 app = FastAPI(
     title="Sistema Patrimonial API",
@@ -32,6 +32,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(patrimonios.router)
 app.include_router(outros.router)
+app.include_router(usuarios.router)
+app.include_router(visitantes.router)
 
 # Serve o app web (frontend) na raiz
 FRONTEND = os.path.join(os.path.dirname(__file__), "..", "web")

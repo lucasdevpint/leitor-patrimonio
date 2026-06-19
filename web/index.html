@@ -141,7 +141,10 @@
       <div class="topbar-titulo" id="topbar-titulo">📦 Patrimônio</div>
       <div class="topbar-usuario" id="topbar-usuario"></div>
     </div>
-    <button class="topbar-sair" onclick="sair()" title="Sair">⬅</button>
+    <div style="display:flex;gap:14px;align-items:center">
+      <button class="topbar-sair" onclick="abrirMenuMais()" title="Mais opções">⋯</button>
+      <button class="topbar-sair" onclick="sair()" title="Sair">⬅</button>
+    </div>
   </div>
 
   <!-- Conteúdo -->
@@ -281,15 +284,26 @@ function navegar(pagina) {
   if (btn) btn.classList.add("ativo");
 
   const titulos = {
-    dashboard:  "📊 Dashboard",
-    lista:      "🗂 Listagem",
-    busca:      "🔍 Busca",
-    cadastrar:  "➕ Cadastrar",
-    manutencao: "🔧 Manutenção",
+    dashboard:   "📊 Dashboard",
+    lista:       "🗂 Listagem",
+    busca:       "🔍 Busca",
+    cadastrar:   "➕ Cadastrar",
+    manutencao:  "🔧 Manutenção",
+    movimentar:  "🔀 Movimentar",
+    historico:   "📋 Histórico",
+    relatorios:  "📄 Relatórios",
+    usuarios:    "👥 Usuários",
+    visitantes:  "🪪 Visitantes",
+    auditoria:   "🛡 Auditoria",
+    "minha-senha": "🔑 Minha Senha",
   };
   document.getElementById("topbar-titulo").textContent = titulos[pagina] || "Patrimônio";
 
-  const paginas = { dashboard, lista, busca, cadastrar, manutencao };
+  const paginas = {
+    dashboard, lista, busca, cadastrar, manutencao,
+    movimentar, historico, relatorios, usuarios, visitantes, auditoria,
+    "minha-senha": minhaSenha,
+  };
   if (paginas[pagina]) paginas[pagina]();
 }
 
@@ -628,6 +642,474 @@ async function manutencao() {
           <div style="font-size:13px">${m.tipo} · ${m.data_prevista}</div>
           ${m.responsavel ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">👤 ${m.responsavel}</div>` : ""}
           ${m.local ? `<div style="font-size:12px;color:var(--muted)">📍 ${m.local}</div>` : ""}
+        </div>`;
+    }
+    c.innerHTML = html;
+  } catch(e) { c.innerHTML = `<div class="loading">Erro: ${e.message}</div>`; }
+}
+
+// ── MENU "MAIS" ───────────────────────────────────────────
+function abrirMenuMais() {
+  const ehAdmin = USUARIO?.nivel === "admin";
+  const html = `
+    <div style="font-size:17px;font-weight:bold;margin-bottom:16px">⋯ Mais opções</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-ghost" style="text-align:left;display:flex;gap:10px;align-items:center" onclick="fecharDetalhe();navegar('historico')">
+        📋 Histórico de Movimentações
+      </button>
+      <button class="btn btn-ghost" style="text-align:left;display:flex;gap:10px;align-items:center" onclick="fecharDetalhe();navegar('movimentar')">
+        🔀 Movimentar Patrimônio
+      </button>
+      <button class="btn btn-ghost" style="text-align:left;display:flex;gap:10px;align-items:center" onclick="fecharDetalhe();navegar('relatorios')">
+        📄 Relatórios
+      </button>
+      ${ehAdmin ? `
+      <div style="height:1px;background:#2a3a5c;margin:6px 0"></div>
+      <button class="btn btn-ghost" style="text-align:left;display:flex;gap:10px;align-items:center" onclick="fecharDetalhe();navegar('usuarios')">
+        👥 Usuários
+      </button>
+      <button class="btn btn-ghost" style="text-align:left;display:flex;gap:10px;align-items:center" onclick="fecharDetalhe();navegar('visitantes')">
+        🪪 Visitantes
+      </button>
+      <button class="btn btn-ghost" style="text-align:left;display:flex;gap:10px;align-items:center" onclick="fecharDetalhe();navegar('auditoria')">
+        🛡 Auditoria
+      </button>
+      ` : ""}
+      <div style="height:1px;background:#2a3a5c;margin:6px 0"></div>
+      <button class="btn btn-ghost" style="text-align:left;display:flex;gap:10px;align-items:center" onclick="fecharDetalhe();navegar('minha-senha')">
+        🔑 Alterar Minha Senha
+      </button>
+    </div>
+  `;
+  document.getElementById("detalhe-conteudo").innerHTML = html;
+  document.getElementById("overlay").style.display = "block";
+  setTimeout(() => document.getElementById("detalhe-sheet").classList.add("aberto"), 10);
+}
+
+// ── MOVIMENTAR (tela própria, fora da bottom nav) ──────────
+async function movimentar() {
+  const c = document.getElementById("conteudo");
+  let locais = [];
+  try { locais = await api("GET", "/patrimonios/locais"); } catch(_) {}
+  c.innerHTML = `
+    <div class="secao-titulo">🔀 Movimentar Patrimônio</div>
+    <div class="form-group"><label class="form-label">Código do Patrimônio *</label>
+      <input id="mv-codigo" placeholder="PAT-0001"/></div>
+    <div class="form-group"><label class="form-label">Local de Destino *</label>
+      <select id="mv-local">
+        <option value="">— Selecione —</option>
+        ${locais.map(l => `<option value="${l.id}">${l.nome}</option>`).join("")}
+      </select></div>
+    <button class="btn btn-accent" onclick="confirmarMovimentacao()">Registrar Movimentação</button>
+  `;
+}
+
+async function confirmarMovimentacao() {
+  const codigo = document.getElementById("mv-codigo").value.trim();
+  const local_id = parseInt(document.getElementById("mv-local").value);
+  if (!codigo || !local_id) { toast("Preencha código e local.", "erro"); return; }
+  try {
+    await api("POST", "/movimentacoes", { codigo, novo_local_id: local_id });
+    toast("Movimentação registrada!");
+    movimentar();
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+// ── HISTÓRICO ─────────────────────────────────────────────
+async function historico() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = `
+    <div class="secao-titulo">📋 Histórico de Movimentações</div>
+    <div class="busca-bar">
+      <input id="hist-codigo" placeholder="Código do patrimônio"/>
+      <button class="btn btn-accent btn-sm" onclick="buscarHistorico()">Buscar</button>
+    </div>
+    <div id="hist-resultado"></div>
+  `;
+  document.getElementById("hist-codigo").addEventListener("keydown", e => {
+    if (e.key === "Enter") buscarHistorico();
+  });
+}
+
+async function buscarHistorico() {
+  const codigo = document.getElementById("hist-codigo").value.trim();
+  if (!codigo) return;
+  const res = document.getElementById("hist-resultado");
+  res.innerHTML = '<div class="loading">Buscando...</div>';
+  try {
+    const dados = await api("GET", `/movimentacoes/${codigo}`);
+    if (!dados.length) {
+      res.innerHTML = '<div class="loading">Nenhuma movimentação encontrada.</div>';
+      return;
+    }
+    res.innerHTML = dados.map(h => `
+      <div class="card">
+        <div style="font-size:13px;color:var(--muted)">${h.data}</div>
+        <div style="margin-top:4px">${h.origem} → <b>${h.destino}</b></div>
+      </div>
+    `).join("");
+  } catch(e) { res.innerHTML = `<div class="loading">Erro: ${e.message}</div>`; }
+}
+
+// ── RELATÓRIOS ────────────────────────────────────────────
+function relatorios() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = `
+    <div class="secao-titulo">📄 Relatórios</div>
+    <div class="card">
+      <div class="card-titulo">Relatório Completo (Excel)</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">
+        Gera um arquivo .xlsx com patrimônios, status, manutenções e auditoria.
+        O download abre em uma nova aba do navegador.
+      </div>
+      <button class="btn btn-accent" onclick="gerarRelatorio()">📥 Gerar Relatório</button>
+    </div>
+  `;
+}
+
+function gerarRelatorio() {
+  // Abre numa nova aba passando o token via querystring,
+  // já que downloads de arquivo não enviam headers customizados.
+  toast("Gerando relatório...");
+  window.open(`${API}/relatorios/excel?token=${TOKEN}`, "_blank");
+}
+
+// ── USUÁRIOS (admin) ──────────────────────────────────────
+async function usuarios() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = '<div class="loading">Carregando...</div>';
+  try {
+    const dados = await api("GET", "/usuarios/");
+    let html = `
+      <div class="secao-titulo">👥 Usuários</div>
+      <button class="btn btn-accent" style="margin-bottom:14px" onclick="abrirNovoUsuario()">➕ Novo Usuário</button>
+    `;
+    for (const u of dados) {
+      const corNivel = { admin: "accent", editor: "success", visualizador: "warn" }[u.nivel] || "accent";
+      html += `
+        <div class="card" onclick='abrirEdicaoUsuario(${JSON.stringify(u).replace(/'/g,"&apos;")})' style="cursor:pointer">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:bold">${u.nome}</span>
+            <span class="badge badge-${corNivel}">${u.nivel}</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">@${u.login} ${u.email ? "· " + u.email : ""}</div>
+          ${u.cargo ? `<div style="font-size:12px;color:var(--muted)">${u.cargo}</div>` : ""}
+          <div style="margin-top:6px">
+            <span class="badge badge-${u.ativo ? "success" : "danger"}">${u.ativo ? "Ativo" : "Inativo"}</span>
+          </div>
+        </div>`;
+    }
+    c.innerHTML = html;
+  } catch(e) { c.innerHTML = `<div class="loading">Erro: ${e.message}</div>`; }
+}
+
+function abrirNovoUsuario() {
+  document.getElementById("detalhe-conteudo").innerHTML = `
+    <div style="font-size:17px;font-weight:bold;margin-bottom:16px">➕ Novo Usuário</div>
+    <div class="form-group"><label class="form-label">Nome completo *</label><input id="nu-nome"/></div>
+    <div class="form-group"><label class="form-label">Login *</label><input id="nu-login"/></div>
+    <div class="form-group"><label class="form-label">E-mail</label><input id="nu-email" type="email"/></div>
+    <div class="form-group"><label class="form-label">Cargo</label><input id="nu-cargo"/></div>
+    <div class="form-group"><label class="form-label">Senha * (mín. 8 caracteres)</label><input id="nu-senha" type="password"/></div>
+    <div class="form-group"><label class="form-label">Confirmar Senha *</label><input id="nu-confirmar" type="password"/></div>
+    <div class="form-group"><label class="form-label">Nível de Acesso *</label>
+      <select id="nu-nivel">
+        <option value="visualizador">Visualizador</option>
+        <option value="editor">Editor</option>
+        <option value="admin">Admin</option>
+      </select></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-success" onclick="salvarNovoUsuario()">💾 Cadastrar</button>
+      <button class="btn btn-ghost" onclick="fecharDetalhe()">Cancelar</button>
+    </div>
+  `;
+  document.getElementById("overlay").style.display = "block";
+  setTimeout(() => document.getElementById("detalhe-sheet").classList.add("aberto"), 10);
+}
+
+async function salvarNovoUsuario() {
+  try {
+    await api("POST", "/usuarios/", {
+      nome:            document.getElementById("nu-nome").value.trim(),
+      login:           document.getElementById("nu-login").value.trim(),
+      email:           document.getElementById("nu-email").value.trim() || null,
+      cargo:           document.getElementById("nu-cargo").value.trim() || null,
+      senha:           document.getElementById("nu-senha").value,
+      confirmar_senha: document.getElementById("nu-confirmar").value,
+      nivel:           document.getElementById("nu-nivel").value,
+    });
+    toast("Usuário cadastrado!");
+    fecharDetalhe();
+    usuarios();
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+function abrirEdicaoUsuario(u) {
+  if (typeof u === "string") u = JSON.parse(u);
+  const souEu = USUARIO?.login === u.login;
+  document.getElementById("detalhe-conteudo").innerHTML = `
+    <div style="font-size:17px;font-weight:bold;margin-bottom:16px">✏️ ${u.nome}</div>
+    <div class="form-group"><label class="form-label">Nome</label><input id="eu-nome" value="${u.nome}"/></div>
+    <div class="form-group"><label class="form-label">E-mail</label><input id="eu-email" type="email" value="${u.email||""}"/></div>
+    <div class="form-group"><label class="form-label">Cargo</label><input id="eu-cargo" value="${u.cargo||""}"/></div>
+    <div class="form-group"><label class="form-label">Nível de Acesso</label>
+      <select id="eu-nivel">
+        ${["visualizador","editor","admin"].map(n => `<option value="${n}" ${n===u.nivel?"selected":""}>${n}</option>`).join("")}
+      </select></div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select id="eu-ativo" ${souEu ? "disabled" : ""}>
+        <option value="true" ${u.ativo?"selected":""}>Ativo</option>
+        <option value="false" ${!u.ativo?"selected":""}>Inativo</option>
+      </select>
+      ${souEu ? '<div style="font-size:11px;color:var(--muted);margin-top:4px">Você não pode desativar sua própria conta.</div>' : ""}
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;margin-bottom:14px">
+      <button class="btn btn-success" onclick="salvarEdicaoUsuario(${u.id})">💾 Salvar</button>
+      <button class="btn btn-ghost" onclick="fecharDetalhe()">Cancelar</button>
+    </div>
+    <div style="height:1px;background:#2a3a5c;margin:14px 0"></div>
+    <div class="form-grupo-titulo" style="margin-top:0">Redefinir senha</div>
+    <div class="form-group"><label class="form-label">Nova senha (mín. 8 caracteres)</label><input id="eu-senha" type="password"/></div>
+    <div class="form-group"><label class="form-label">Confirmar nova senha</label><input id="eu-senha2" type="password"/></div>
+    <button class="btn btn-accent" onclick="redefinirSenhaUsuario(${u.id})">🔑 Redefinir Senha</button>
+  `;
+  document.getElementById("overlay").style.display = "block";
+  setTimeout(() => document.getElementById("detalhe-sheet").classList.add("aberto"), 10);
+}
+
+async function salvarEdicaoUsuario(id) {
+  try {
+    const body = {
+      nome:  document.getElementById("eu-nome").value.trim(),
+      email: document.getElementById("eu-email").value.trim() || null,
+      cargo: document.getElementById("eu-cargo").value.trim() || null,
+      nivel: document.getElementById("eu-nivel").value,
+    };
+    const ativoEl = document.getElementById("eu-ativo");
+    if (!ativoEl.disabled) body.ativo = ativoEl.value === "true";
+    await api("PUT", `/usuarios/${id}`, body);
+    toast("Usuário atualizado!");
+    fecharDetalhe();
+    usuarios();
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+async function redefinirSenhaUsuario(id) {
+  const senha = document.getElementById("eu-senha").value;
+  const conf  = document.getElementById("eu-senha2").value;
+  if (!senha) { toast("Digite a nova senha.", "erro"); return; }
+  try {
+    await api("PATCH", `/usuarios/${id}/senha`, { senha_nova: senha, confirmar: conf });
+    toast("Senha redefinida!");
+    fecharDetalhe();
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+// ── ALTERAR MINHA SENHA (qualquer usuário) ───────────────
+function minhaSenha() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = `
+    <div class="secao-titulo">🔑 Alterar Minha Senha</div>
+    <div class="card">
+      <div class="form-group"><label class="form-label">Senha Atual *</label>
+        <input id="ms-atual" type="password"/></div>
+      <div class="form-group"><label class="form-label">Nova Senha * (mín. 8 caracteres)</label>
+        <input id="ms-nova" type="password"/></div>
+      <div class="form-group"><label class="form-label">Confirmar Nova Senha *</label>
+        <input id="ms-confirmar" type="password"/></div>
+      <button class="btn btn-accent" onclick="salvarMinhaSenha()">💾 Alterar Senha</button>
+    </div>
+  `;
+}
+
+async function salvarMinhaSenha() {
+  const atual     = document.getElementById("ms-atual").value;
+  const nova      = document.getElementById("ms-nova").value;
+  const confirmar = document.getElementById("ms-confirmar").value;
+  if (!atual || !nova) { toast("Preencha todos os campos.", "erro"); return; }
+  try {
+    await api("PATCH", "/usuarios/me/senha", {
+      senha_atual: atual, senha_nova: nova, confirmar
+    });
+    toast("Senha alterada com sucesso!");
+    document.getElementById("ms-atual").value = "";
+    document.getElementById("ms-nova").value = "";
+    document.getElementById("ms-confirmar").value = "";
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+// ── VISITANTES (admin) ────────────────────────────────────
+async function visitantes() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = '<div class="loading">Carregando...</div>';
+  try {
+    const dados = await api("GET", "/visitantes/");
+    renderVisitantes(c, dados);
+  } catch(e) { c.innerHTML = `<div class="loading">Erro: ${e.message}</div>`; }
+}
+
+function renderVisitantes(c, dados) {
+  let html = `
+    <div class="secao-titulo">🪪 Visitantes</div>
+    <div class="busca-bar">
+      <input id="vis-busca" placeholder="Buscar nome, documento, empresa..."/>
+      <button class="btn btn-accent btn-sm" onclick="buscarVisitantes()">Buscar</button>
+    </div>
+    <button class="btn btn-accent" style="margin-bottom:14px" onclick="abrirNovoVisitante()">➕ Novo Visitante</button>
+    <div id="vis-lista">
+  `;
+  if (!dados.length) {
+    html += '<div class="loading">Nenhum visitante cadastrado.</div>';
+  } else {
+    for (const v of dados) {
+      html += `
+        <div class="card" onclick='abrirEdicaoVisitante(${JSON.stringify(v).replace(/'/g,"&apos;")})' style="cursor:pointer">
+          <div style="font-weight:bold">${v.nome}</div>
+          <div class="lista-meta" style="margin-top:4px">
+            ${v.documento ? `<span>🪪 ${v.documento}</span>` : ""}
+            ${v.empresa   ? `<span>🏢 ${v.empresa}</span>` : ""}
+          </div>
+          ${v.telefone || v.email ? `<div class="lista-meta" style="margin-top:2px">
+            ${v.telefone ? `<span>📞 ${v.telefone}</span>` : ""}
+            ${v.email    ? `<span>✉️ ${v.email}</span>` : ""}
+          </div>` : ""}
+        </div>`;
+    }
+  }
+  html += `</div>`;
+  c.innerHTML = html;
+  document.getElementById("vis-busca").addEventListener("keydown", e => {
+    if (e.key === "Enter") buscarVisitantes();
+  });
+}
+
+async function buscarVisitantes() {
+  const termo = document.getElementById("vis-busca").value.trim();
+  const lista = document.getElementById("vis-lista");
+  if (!termo) { visitantes(); return; }
+  lista.innerHTML = '<div class="loading">Buscando...</div>';
+  try {
+    const dados = await api("GET", `/visitantes/buscar/${encodeURIComponent(termo)}`);
+    if (!dados.length) {
+      lista.innerHTML = '<div class="loading">Nenhum resultado.</div>';
+      return;
+    }
+    let html = "";
+    for (const v of dados) {
+      html += `
+        <div class="card" onclick='abrirEdicaoVisitante(${JSON.stringify(v).replace(/'/g,"&apos;")})' style="cursor:pointer">
+          <div style="font-weight:bold">${v.nome}</div>
+          <div class="lista-meta" style="margin-top:4px">
+            ${v.documento ? `<span>🪪 ${v.documento}</span>` : ""}
+            ${v.empresa   ? `<span>🏢 ${v.empresa}</span>` : ""}
+          </div>
+        </div>`;
+    }
+    lista.innerHTML = html;
+  } catch(e) { lista.innerHTML = `<div class="loading">Erro: ${e.message}</div>`; }
+}
+
+function abrirNovoVisitante() {
+  document.getElementById("detalhe-conteudo").innerHTML = `
+    <div style="font-size:17px;font-weight:bold;margin-bottom:16px">➕ Novo Visitante</div>
+    <div class="form-group"><label class="form-label">Nome *</label><input id="nv-nome"/></div>
+    <div class="form-group"><label class="form-label">Documento</label><input id="nv-doc"/></div>
+    <div class="form-group"><label class="form-label">Empresa</label><input id="nv-empresa"/></div>
+    <div class="form-group"><label class="form-label">Telefone</label><input id="nv-tel"/></div>
+    <div class="form-group"><label class="form-label">E-mail</label><input id="nv-email" type="email"/></div>
+    <div class="form-group"><label class="form-label">Observações</label><input id="nv-obs"/></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-success" onclick="salvarNovoVisitante()">💾 Cadastrar</button>
+      <button class="btn btn-ghost" onclick="fecharDetalhe()">Cancelar</button>
+    </div>
+  `;
+  document.getElementById("overlay").style.display = "block";
+  setTimeout(() => document.getElementById("detalhe-sheet").classList.add("aberto"), 10);
+}
+
+async function salvarNovoVisitante() {
+  const nome = document.getElementById("nv-nome").value.trim();
+  if (!nome) { toast("O nome é obrigatório.", "erro"); return; }
+  try {
+    await api("POST", "/visitantes/", {
+      nome,
+      documento:   document.getElementById("nv-doc").value.trim() || null,
+      empresa:     document.getElementById("nv-empresa").value.trim() || null,
+      telefone:    document.getElementById("nv-tel").value.trim() || null,
+      email:       document.getElementById("nv-email").value.trim() || null,
+      observacoes: document.getElementById("nv-obs").value.trim() || null,
+    });
+    toast("Visitante cadastrado!");
+    fecharDetalhe();
+    visitantes();
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+function abrirEdicaoVisitante(v) {
+  if (typeof v === "string") v = JSON.parse(v);
+  document.getElementById("detalhe-conteudo").innerHTML = `
+    <div style="font-size:17px;font-weight:bold;margin-bottom:16px">✏️ ${v.nome}</div>
+    <div class="form-group"><label class="form-label">Nome</label><input id="ev-nome" value="${v.nome}"/></div>
+    <div class="form-group"><label class="form-label">Documento</label><input id="ev-doc" value="${v.documento||""}"/></div>
+    <div class="form-group"><label class="form-label">Empresa</label><input id="ev-empresa" value="${v.empresa||""}"/></div>
+    <div class="form-group"><label class="form-label">Telefone</label><input id="ev-tel" value="${v.telefone||""}"/></div>
+    <div class="form-group"><label class="form-label">E-mail</label><input id="ev-email" value="${v.email||""}"/></div>
+    <div class="form-group"><label class="form-label">Observações</label><input id="ev-obs" value="${v.observacoes||""}"/></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-success" onclick="salvarEdicaoVisitante(${v.id})">💾 Salvar</button>
+      <button class="btn btn-danger btn-sm" onclick="desativarVisitanteConfirma(${v.id})">Desativar</button>
+    </div>
+  `;
+  document.getElementById("overlay").style.display = "block";
+  setTimeout(() => document.getElementById("detalhe-sheet").classList.add("aberto"), 10);
+}
+
+async function salvarEdicaoVisitante(id) {
+  try {
+    await api("PUT", `/visitantes/${id}`, {
+      nome:        document.getElementById("ev-nome").value.trim(),
+      documento:   document.getElementById("ev-doc").value.trim() || null,
+      empresa:     document.getElementById("ev-empresa").value.trim() || null,
+      telefone:    document.getElementById("ev-tel").value.trim() || null,
+      email:       document.getElementById("ev-email").value.trim() || null,
+      observacoes: document.getElementById("ev-obs").value.trim() || null,
+    });
+    toast("Visitante atualizado!");
+    fecharDetalhe();
+    visitantes();
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+async function desativarVisitanteConfirma(id) {
+  if (!confirm("Tem certeza que deseja desativar este visitante?")) return;
+  try {
+    await api("PATCH", `/visitantes/${id}/desativar`);
+    toast("Visitante desativado.");
+    fecharDetalhe();
+    visitantes();
+  } catch(e) { toast(e.message, "erro"); }
+}
+
+// ── AUDITORIA (admin) ─────────────────────────────────────
+async function auditoria() {
+  const c = document.getElementById("conteudo");
+  c.innerHTML = '<div class="loading">Carregando...</div>';
+  try {
+    const dados = await api("GET", "/auditoria?limite=100");
+    if (!dados.length) {
+      c.innerHTML = `<div class="secao-titulo">🛡 Auditoria</div><div class="loading">Nenhum registro.</div>`;
+      return;
+    }
+    let html = `<div class="secao-titulo">🛡 Auditoria (últimos 100)</div>`;
+    for (const l of dados) {
+      html += `
+        <div class="card" style="padding:12px 14px">
+          <div style="display:flex;justify-content:space-between">
+            <span class="badge badge-accent">${l.acao}</span>
+            <span style="font-size:11px;color:var(--muted)">${l.criado_em}</span>
+          </div>
+          <div style="font-size:13px;margin-top:6px">${l.descricao||""}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">👤 ${l.usuario_login}</div>
         </div>`;
     }
     c.innerHTML = html;

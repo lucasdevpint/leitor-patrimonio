@@ -1,16 +1,17 @@
 # api/deps.py
 # Dependências injetadas nas rotas via FastAPI Depends().
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+from typing import Optional
 import hashlib
 
 from api.config import SECRET_KEY, ALGORITHM, TOKEN_HORAS
 from db.banco import conectar
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 # ── Banco ────────────────────────────────────────────────────
@@ -29,10 +30,7 @@ def criar_token(dados: dict) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_usuario_atual(
-    token: str = Depends(oauth2_scheme),
-    conn=Depends(get_conn)
-):
+def _validar_token(token: str, conn):
     erro = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token inválido ou expirado.",
@@ -57,6 +55,26 @@ def get_usuario_atual(
     if not usuario or not usuario["ativo"]:
         raise erro
     return usuario
+
+
+def get_usuario_atual(
+    token: Optional[str] = Depends(oauth2_scheme),
+    token_query: Optional[str] = Query(None, alias="token"),
+    conn=Depends(get_conn)
+):
+    """
+    Aceita o token via header Authorization (uso normal da API)
+    OU via querystring ?token=... (necessário para downloads abertos
+    em nova aba, onde não é possível enviar headers customizados).
+    """
+    usado = token or token_query
+    if not usado:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token não fornecido.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return _validar_token(usado, conn)
 
 
 def requer_editor(usuario=Depends(get_usuario_atual)):

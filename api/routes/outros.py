@@ -1,5 +1,6 @@
 # api/routes/outros.py
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 from api.deps import get_conn, get_usuario_atual, requer_editor, requer_admin
@@ -8,6 +9,7 @@ from core import dashboard as dash_core
 from core import manutencao as man_core
 from core import auditoria as aud_core
 from core import inventario as inv_core
+from core import relatorios as rel_core
 
 router = APIRouter(tags=["Outros"])
 
@@ -98,3 +100,19 @@ def auditoria_logs(limite: int = 200, usuario_login: Optional[str] = None,
                    conn=Depends(get_conn), _=Depends(requer_admin)):
     logs = aud_core.listar_logs(conn, limite, usuario_login, acao)
     return [{**l, "criado_em": str(l["criado_em"])} for l in logs]
+
+
+# ── Relatórios ───────────────────────────────────────────────
+@router.get("/relatorios/excel")
+def relatorio_excel(conn=Depends(get_conn), usuario=Depends(requer_editor)):
+    caminho, msg = rel_core.gerar_relatorio_completo(conn)
+    if not caminho:
+        raise HTTPException(status_code=500, detail=msg)
+    aud_core.registrar(conn, "EXPORTAR",
+                       f"Relatório Excel gerado via app web.", "relatorios")
+    import os
+    return FileResponse(
+        caminho,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=os.path.basename(caminho)
+    )
