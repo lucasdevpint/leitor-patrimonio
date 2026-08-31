@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Ambiente virtual
+venv/
+.venv/
+
+# Variáveis de ambiente / credenciais
+.env
+.env.*
+!.env.example
+
+# Banco de dados / backups
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Dados reais / planilhas
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+
+# Relatórios gerados
+assets/relatorios/
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.log
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+
+# Backups de desenvolvimento
+*.backup
+*.backup-*
